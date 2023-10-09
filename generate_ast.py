@@ -7,6 +7,7 @@ import re
 #
 sys.path.extend(['.', '..'])
 
+# from pycparserext import ext_c_parser
 from pycparser import parse_file, c_ast
 from pycparser.plyparser import Coord
 
@@ -160,6 +161,9 @@ if __name__ == "__main__":
         # Do trip from C -> ast -> dict -> ast -> json, then print.
         ast_dict = file_to_dict(sys.argv[1])
         ast = from_dict(ast_dict)
-        print(to_json(ast, sort_keys=True, indent=4))
+        with open('tetris.json', 'w', encoding='utf-8') as f:
+            json_data = to_json(ast)
+            f.write(json_data)
+        # print(to_json(ast, sort_keys=True, indent=4))
     else:
         print("Please provide a filename as argument")

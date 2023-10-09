@@ -6,6 +6,7 @@
 //remember the proverb: the magicality of numbers is in the eye of the beholder.
 //a keen observer can make sense of any number, so don't be retarded.
 
+/*
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +15,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <ncurses.h>
-
+*/
 
 //formula for calculating score
 #define SCORE (100*cleared+75*(cleared/2)+125*(cleared/3)+150*(cleared/4))* level
