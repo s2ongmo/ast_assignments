@@ -2,7 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+/*
+<기본> 
+함수 개수 추출 함수
+함수들의 리턴타입 추출 함수
+함수들의 이름 추출 함수
+함수들의 파라미터 타입, 변수명 추출 함수
+함수들의 if 조건 개수 추출하기
+*/
 
 int supports_full_hd(const char * const monitor_json_string)
 {
