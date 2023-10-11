@@ -1,7 +1,7 @@
 #include <cjson/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 /*
 <기본> 
 함수 개수 추출 함수
@@ -11,88 +11,105 @@
 함수들의 if 조건 개수 추출하기
 */
 
-int supports_full_hd(const char * const monitor_json_string)
-{
-    // JSON 파싱
-    cJSON *monitor_json = cJSON_Parse(monitor_json_string);
-    if (monitor_json == NULL)
-    {
-        fprintf(stderr, "Error: Could not parse JSON\n");
-        return 0;
+
+int count_func_defs(cJSON *ast) {
+    int count = 0;
+
+    // "ext" 키를 가진 아이템을 가져옵니다.
+    cJSON *ext = cJSON_GetObjectItem(ast, "ext");
+    if (ext == NULL) {
+        fprintf(stderr, "ext not found\n");
+        return 0; // ext가 없으면 0을 반환합니다.
     }
 
-    // name 필드 출력 (옵션)
-    cJSON *name = cJSON_GetObjectItemCaseSensitive(monitor_json, "name");
-    if (cJSON_IsString(name) && (name->valuestring != NULL))
-    {
-        printf("Checking monitor \"%s\"\n", name->valuestring);
+    // "ext" 아이템이 배열인지 확인합니다.
+    if (!cJSON_IsArray(ext)) {
+        fprintf(stderr, "ext is not an array\n");
+        return 0; // ext가 배열이 아니면 0을 반환합니다.
     }
 
-    // 해상도 검사
-    cJSON *resolutions = cJSON_GetObjectItemCaseSensitive(monitor_json, "resolutions");
-    cJSON *resolution = NULL;
-    cJSON_ArrayForEach(resolution, resolutions)
-    {
-        cJSON *width = cJSON_GetObjectItemCaseSensitive(resolution, "width");
-        cJSON *height = cJSON_GetObjectItemCaseSensitive(resolution, "height");
-
-        if (!cJSON_IsNumber(width) || !cJSON_IsNumber(height))
-        {
-            fprintf(stderr, "Error: Resolution width/height is not a number\n");
-            cJSON_Delete(monitor_json);
-            return 0;
-        }
-
-        if ((width->valuedouble == 1920) && (height->valuedouble == 1080))
-        {
-            cJSON_Delete(monitor_json);
-            return 1;
+    // 배열의 각 요소를 순회합니다.
+    cJSON *element;
+    cJSON_ArrayForEach(element, ext) {
+        // "_nodetype" 키를 가진 아이템을 가져옵니다.
+        cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
+        if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "FuncDef") == 0) {
+            count++; // "_nodetype"이 "FuncDef"이면 카운트를 증가시킵니다.
         }
     }
 
-    // 메모리 해제 및 종료
-    cJSON_Delete(monitor_json);
-    return 0;
+    return count;
 }
 
+void analyze_function(cJSON *function) {
+    // 함수 이름 추출
+    cJSON *name = cJSON_GetObjectItem(function, "name");
+    printf("Function Name: %s\n", name->valuestring);
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
+    // 리턴 타입 추출
+    cJSON *returnType = cJSON_GetObjectItem(function, "returnType");
+    printf("Return Type: %s\n", returnType->valuestring);
+
+    // 파라미터 추출
+    cJSON *parameters = cJSON_GetObjectItem(function, "parameters");
+    int param_count = cJSON_GetArraySize(parameters);
+    printf("Parameter Count: %d\n", param_count);
+    for(int i = 0; i < param_count; i++) {
+        cJSON *param = cJSON_GetArrayItem(parameters, i);
+        cJSON *param_type = cJSON_GetObjectItem(param, "type");
+        cJSON *param_name = cJSON_GetObjectItem(param, "name");
+        printf("Parameter: %s %s\n", param_type->valuestring, param_name->valuestring);
+    }
+
+    // if문 개수 추출은 AST의 구조에 따라 다르므로, 예시를 제공하기 어렵습니다.
+    // 일반적으로 조건문 노드를 찾아서 카운트를 증가시키는 방식으로 구현할 수 있습니다.
+}
+
+int main(int argc, char *argv[]) {
+    if(argc < 2) {
         fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-        return EXIT_FAILURE;
+        return 1;
     }
-    
-    // 파일 읽기
-    FILE *file = fopen(argv[1], "rb");
-    if (!file) {
-        perror("fopen");
-        return EXIT_FAILURE;
+
+    FILE *fp = fopen(argv[1], "rt");
+    if(fp == NULL) {
+        perror("Error opening file");
+        return 1;
     }
-    
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    
-    char *data = malloc(length + 1);
-    if (!data) {
-        perror("malloc");
-        fclose(file);
-        return EXIT_FAILURE;
+
+    // 파일 크기 얻기
+    fseek(fp, 0, SEEK_END);
+    long length = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    // 메모리 할당 및 파일 읽기
+    char *json_string = (char*)malloc((length + 1) * sizeof(char));
+    if(json_string == NULL) {
+        fprintf(stderr, "Memory allocation error\n");
+        fclose(fp);
+        return 1;
     }
-    
-    fread(data, 1, length, file);
-    data[length] = '\0';
-    fclose(file);
-    
-    // 함수 호출 및 결과 출력
-    int result = supports_full_hd(data);
-    if (result) {
-        printf("The monitor supports Full HD.\n");
-    } else {
-        printf("The monitor does not support Full HD.\n");
+    fread(json_string, 1, length, fp);
+    json_string[length] = '\0';
+
+    // 파일 닫기
+    fclose(fp);
+
+    // JSON 파싱
+    cJSON *ast = cJSON_Parse(json_string);
+    if(ast == NULL) {
+        fprintf(stderr, "Error parsing JSON\n");
+        free(json_string);
+        return 1;
     }
-    
-    free(data);
-    return EXIT_SUCCESS;
+
+    int func_def_count = count_func_defs(ast);
+    printf("FuncDef Count: %d\n", func_def_count);
+
+    // 메모리 해제
+    cJSON_Delete(ast);
+    free(json_string);
+
+    return 0;
 }
 
