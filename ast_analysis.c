@@ -11,9 +11,33 @@
 함수들의 if 조건 개수 추출하기
 */
 
+int count_if_statements(cJSON *block_items) {
+    int ifCount = 0;
 
-int count_func_defs(cJSON *ast) {
-    int count = 0;
+    // "block_items" 아이템이 배열인지 확인합니다.
+    if (!cJSON_IsArray(block_items)) {
+        fprintf(stderr, "block_items is not an array\n");
+        return 0;
+    }
+
+    // 배열의 각 요소를 순회합니다.
+    cJSON *element;
+    cJSON_ArrayForEach(element, block_items) {
+        // "_nodetype" 키를 가진 아이템을 가져옵니다.
+        cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
+        if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "If") == 0) {
+            ifCount++; // "_nodetype"이 "If"이면 카운트를 증가시킵니다.
+        }
+    }
+
+
+    return ifCount;
+}
+
+
+int analysis(cJSON *ast) {
+    int funcCount = 0;
+
 
     // "ext" 키를 가진 아이템을 가져옵니다.
     cJSON *ext = cJSON_GetObjectItem(ast, "ext");
@@ -30,40 +54,125 @@ int count_func_defs(cJSON *ast) {
 
     // 배열의 각 요소를 순회합니다.
     cJSON *element;
+    // ... (이전 코드)
+
     cJSON_ArrayForEach(element, ext) {
-        // "_nodetype" 키를 가진 아이템을 가져옵니다.
-        cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
-        if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "FuncDef") == 0) {
-            count++; // "_nodetype"이 "FuncDef"이면 카운트를 증가시킵니다.
+    cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
+    if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "FuncDef") == 0) {
+        funcCount++;
+        cJSON *body = cJSON_GetObjectItem(element, "body");
+        if (body != NULL) {
+                cJSON *block_items = cJSON_GetObjectItem(body, "block_items");
+                if (block_items != NULL) {
+                    int if_count = count_if_statements(block_items);
+                    printf("If statement count: %d\n", if_count);
+                }
+            }
+    } else {
+        continue;  // 만약 nodetype이 FuncDef가 아니라면, 다음 element로 넘어갑니다.
+    }
+
+    // 여기서부터는 nodetype이 "FuncDef"인 경우만 처리합니다.
+    printf("Function num:%d\n", funcCount);
+
+    cJSON *decl = cJSON_GetObjectItem(element, "decl");  // nodetype이 아닌 element에서 "decl"을 가져옵니다.
+    if (decl == NULL) {
+        //fprintf(stderr, "decl not found\n");
+        continue;  // decl이 없다면, 다음 element로 넘어갑니다.
+    }
+
+    cJSON *funcName = cJSON_GetObjectItem(decl, "name");
+    if (funcName != NULL && cJSON_IsString(funcName)) {  // name이 존재하고 문자열인지 확인합니다.
+        printf("funcName: %s\n", funcName->valuestring);
+    } else {
+        printf("funcName: NULL\n");
+    }
+
+    // ... (이후 코드도 비슷한 방식으로 수정)
+
+    // 반환 타입을 가져오는 코드 부분
+    cJSON *type1 = cJSON_GetObjectItem(decl, "type");
+    if (type1 == NULL) {
+        //fprintf(stderr, "type1 not found\n");
+        continue;
+    }
+
+    cJSON *TypeDecl = cJSON_GetObjectItem(type1, "type");
+    if (TypeDecl == NULL) {
+        //fprintf(stderr, "TypeDecl not found\n");
+        continue;
+    }
+
+    cJSON *IdentifierType = cJSON_GetObjectItem(TypeDecl, "type");
+    if (IdentifierType == NULL) {
+        //fprintf(stderr, "IdentifierType not found\n");
+        continue;
+    }
+
+    cJSON *returnType = cJSON_GetObjectItem(IdentifierType, "names");
+    if (returnType != NULL && cJSON_IsArray(returnType)) {  // names가 배열인지 확인합니다.
+        cJSON *firstItem = cJSON_GetArrayItem(returnType, 0);
+        if (firstItem != NULL && cJSON_IsString(firstItem)) {  // 배열의 첫 번째 항목이 문자열인지 확인합니다.
+            printf("returnType: %s\n", firstItem->valuestring);
         }
+    } else {
+        printf("returnType: NULL\n");
     }
 
-    return count;
-}
-
-void analyze_function(cJSON *function) {
-    // 함수 이름 추출
-    cJSON *name = cJSON_GetObjectItem(function, "name");
-    printf("Function Name: %s\n", name->valuestring);
-
-    // 리턴 타입 추출
-    cJSON *returnType = cJSON_GetObjectItem(function, "returnType");
-    printf("Return Type: %s\n", returnType->valuestring);
-
-    // 파라미터 추출
-    cJSON *parameters = cJSON_GetObjectItem(function, "parameters");
-    int param_count = cJSON_GetArraySize(parameters);
-    printf("Parameter Count: %d\n", param_count);
-    for(int i = 0; i < param_count; i++) {
-        cJSON *param = cJSON_GetArrayItem(parameters, i);
-        cJSON *param_type = cJSON_GetObjectItem(param, "type");
-        cJSON *param_name = cJSON_GetObjectItem(param, "name");
-        printf("Parameter: %s %s\n", param_type->valuestring, param_name->valuestring);
+      // 매개변수를 가져오는 코드 부분
+    cJSON *args = cJSON_GetObjectItem(type1, "args");
+    if (args == NULL) {
+        //fprintf(stderr, "args not found\n");
+        continue;
     }
 
-    // if문 개수 추출은 AST의 구조에 따라 다르므로, 예시를 제공하기 어렵습니다.
-    // 일반적으로 조건문 노드를 찾아서 카운트를 증가시키는 방식으로 구현할 수 있습니다.
+    cJSON *params = cJSON_GetObjectItem(args, "params");
+    if (params == NULL) {
+        fprintf(stderr, "params not found\n");
+        printf("\n\n");
+        continue;
+    }
+
+    // 매개변수 이름을 가져오는 코드 부분
+    cJSON *paramsName = cJSON_GetObjectItem(params, "name");
+    if (paramsName != NULL && cJSON_IsString(paramsName)) {
+        printf("paramsName: %s\n", paramsName->valuestring);
+    } else {
+        printf("paramsName: NULL\n");
+    }
+
+    // 매개변수 타입을 가져오는 코드 부분
+    cJSON *type2 = cJSON_GetObjectItem(params, "type");
+    if (type2 == NULL) {
+        //fprintf(stderr, "type2 not found\n");
+        continue;
+    }
+
+    cJSON *type3 = cJSON_GetObjectItem(type2, "type");
+    if (type3 == NULL) {
+        //fprintf(stderr, "type3 not found\n");
+        continue;
+    }
+
+    cJSON *paramsType = cJSON_GetObjectItem(type3, "names");
+    if (paramsType != NULL && cJSON_IsArray(paramsType)) {
+        cJSON *firstItem = cJSON_GetArrayItem(paramsType, 0);
+        if (firstItem != NULL && cJSON_IsString(firstItem)) {
+            printf("paramsType: %s\n", firstItem->valuestring);
+        }
+    } else {
+        printf("paramsType: NULL\n");
+    }
+
+
+        printf("\n\n");
+    }
+
+    printf("Function Total: %d\n", funcCount);
+    return 0;
 }
+
+
 
 int main(int argc, char *argv[]) {
     if(argc < 2) {
@@ -103,8 +212,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int func_def_count = count_func_defs(ast);
-    printf("FuncDef Count: %d\n", func_def_count);
+    analysis(ast);
+    
 
     // 메모리 해제
     cJSON_Delete(ast);
