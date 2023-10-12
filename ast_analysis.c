@@ -11,25 +11,21 @@
 함수들의 if 조건 개수 추출하기
 */
 
-int count_if_statements(cJSON *block_items) {
+int count_if_statements(cJSON* json) {
     int ifCount = 0;
 
-    // "block_items" 아이템이 배열인지 확인합니다.
-    if (!cJSON_IsArray(block_items)) {
-        fprintf(stderr, "block_items is not an array\n");
-        return 0;
+    // 현재 JSON 객체가 If 문인지 확인
+    cJSON* nodetype = cJSON_GetObjectItem(json, "_nodetype");
+    if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "If") == 0) {
+        ifCount++;
     }
 
-    // 배열의 각 요소를 순회합니다.
-    cJSON *element;
-    cJSON_ArrayForEach(element, block_items) {
-        // "_nodetype" 키를 가진 아이템을 가져옵니다.
-        cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
-        if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "If") == 0) {
-            ifCount++; // "_nodetype"이 "If"이면 카운트를 증가시킵니다.
-        }
+    // JSON 객체 내의 모든 키를 반복하면서 중첩된 If 문 찾기
+    cJSON* child = json->child;
+    while (child != NULL) {
+        ifCount += count_if_statements(child);  // 재귀적으로 하위 JSON 객체를 확인
+        child = child->next;
     }
-
 
     return ifCount;
 }
