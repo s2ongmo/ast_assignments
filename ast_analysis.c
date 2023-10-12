@@ -50,8 +50,6 @@ int analysis(cJSON *ast) {
 
     // 배열의 각 요소를 순회합니다.
     cJSON *element;
-    // ... (이전 코드)
-
     cJSON_ArrayForEach(element, ext) {
     cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
     if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "FuncDef") == 0) {
@@ -86,25 +84,25 @@ int analysis(cJSON *ast) {
         printf("funcName: NULL\n");
     }
 
-    // ... (이후 코드도 비슷한 방식으로 수정)
+   
 
     // 반환 타입을 가져오는 코드 부분
     cJSON *type1 = cJSON_GetObjectItem(decl, "type");
     if (type1 == NULL) {
-        //fprintf(stderr, "type1 not found\n");
+        fprintf(stderr, "type1 not found\n");
         continue;
     }
 
     cJSON *TypeDecl = cJSON_GetObjectItem(type1, "type");
     if (TypeDecl == NULL) {
-        //fprintf(stderr, "TypeDecl not found\n");
+        fprintf(stderr, "TypeDecl not found\n");
         continue;
     }
 
     cJSON *IdentifierType = cJSON_GetObjectItem(TypeDecl, "type");
     if (IdentifierType == NULL) {
         //fprintf(stderr, "IdentifierType not found\n");
-        continue;
+        //continue;
     }
 
     cJSON *returnType = cJSON_GetObjectItem(IdentifierType, "names");
@@ -124,49 +122,55 @@ int analysis(cJSON *ast) {
         continue;
     }
 
-    cJSON *params = cJSON_GetObjectItem(args, "params");
-    if (params == NULL) {
+    cJSON *paramsArray = cJSON_GetObjectItem(args, "params");
+    if (paramsArray == NULL) {
         fprintf(stderr, "params not found\n");
         printf("\n\n");
         continue;
     }
 
     // 매개변수 이름을 가져오는 코드 부분
-    cJSON *paramsName = cJSON_GetObjectItem(params, "name");
+    cJSON *paramsName = cJSON_GetObjectItem(paramsArray, "name");
     if (paramsName != NULL && cJSON_IsString(paramsName)) {
         printf("paramsName: %s\n", paramsName->valuestring);
     } else {
         printf("paramsName: NULL\n");
     }
 
-    // 매개변수 타입을 가져오는 코드 부분
-    cJSON *type2 = cJSON_GetObjectItem(params, "type");
-    if (type2 == NULL) {
-        //fprintf(stderr, "type2 not found\n");
-        continue;
-    }
-
-    cJSON *type3 = cJSON_GetObjectItem(type2, "type");
-    if (type3 == NULL) {
-        //fprintf(stderr, "type3 not found\n");
-        continue;
-    }
-
-    cJSON *paramsType = cJSON_GetObjectItem(type3, "names");
-    if (paramsType != NULL && cJSON_IsArray(paramsType)) {
-        cJSON *firstItem = cJSON_GetArrayItem(paramsType, 0);
-        if (firstItem != NULL && cJSON_IsString(firstItem)) {
-            printf("paramsType: %s\n", firstItem->valuestring);
+    int size = cJSON_GetArraySize(paramsArray);  // params 배열의 크기를 얻습니다.
+    for (int i = 0; i < size; i++) {  // 배열의 각 요소에 대해 반복합니다.
+        cJSON *param = cJSON_GetArrayItem(paramsArray, i);  // i번째 요소를 얻습니다.
+        if (param == NULL) {
+            fprintf(stderr, "param not found\n");
+            continue;
         }
-    } else {
-        printf("paramsType: NULL\n");
-    }
-
+        cJSON *type2 = cJSON_GetObjectItem(param, "type");  // i번째 요소에서 "type" 키를 조회합니다.
+        if (type2 == NULL) {
+            fprintf(stderr, "type2 not found\n");
+            continue;
+        }
+        cJSON *type3 = cJSON_GetObjectItem(type2, "type");
+        if (type3 == NULL) {
+            fprintf(stderr, "type3 not found\n");
+            continue;
+        }
+        
+        cJSON *paramsType = cJSON_GetObjectItem(type3, "names");
+        if (paramsType != NULL && cJSON_IsArray(paramsType)) {
+            cJSON *firstItem = cJSON_GetArrayItem(paramsType, 0);
+            if (firstItem != NULL && cJSON_IsString(firstItem)) {
+                printf("paramsType: %s\n", firstItem->valuestring);
+            }
+        } else {
+            printf("paramsType: NULL\n");
+        }
 
         printf("\n\n");
+ 
+        }
     }
 
-    printf("\nFunction Total: %d\n", funcCount);
+    printf("Function Total: %d\n", funcCount);
     return 0;
 }
 
