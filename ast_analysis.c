@@ -56,7 +56,15 @@ int analysis(cJSON *ast) {
     cJSON *nodetype = cJSON_GetObjectItem(element, "_nodetype");
     if (nodetype != NULL && cJSON_IsString(nodetype) && strcmp(nodetype->valuestring, "FuncDef") == 0) {
         funcCount++;
-        cJSON *body = cJSON_GetObjectItem(element, "body");
+        
+    } else {
+        continue;  // 만약 nodetype이 FuncDef가 아니라면, 다음 element로 넘어갑니다.
+    }
+
+    // 여기서부터는 nodetype이 "FuncDef"인 경우만 처리합니다.
+    printf("Function num:%d\n", funcCount);
+    
+    cJSON *body = cJSON_GetObjectItem(element, "body");
         if (body != NULL) {
                 cJSON *block_items = cJSON_GetObjectItem(body, "block_items");
                 if (block_items != NULL) {
@@ -64,12 +72,6 @@ int analysis(cJSON *ast) {
                     printf("If statement count: %d\n", if_count);
                 }
             }
-    } else {
-        continue;  // 만약 nodetype이 FuncDef가 아니라면, 다음 element로 넘어갑니다.
-    }
-
-    // 여기서부터는 nodetype이 "FuncDef"인 경우만 처리합니다.
-    printf("Function num:%d\n", funcCount);
 
     cJSON *decl = cJSON_GetObjectItem(element, "decl");  // nodetype이 아닌 element에서 "decl"을 가져옵니다.
     if (decl == NULL) {
@@ -164,7 +166,7 @@ int analysis(cJSON *ast) {
         printf("\n\n");
     }
 
-    printf("Function Total: %d\n", funcCount);
+    printf("\nFunction Total: %d\n", funcCount);
     return 0;
 }
 
